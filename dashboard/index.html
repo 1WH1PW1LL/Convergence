@@ -106,7 +106,7 @@ main{max-width:1600px;margin:0 auto;padding:1.5rem 2rem 4rem}
 .card-title{font-size:.72rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem}
 
 /* ────── KPI GRID ────── */
-.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:1rem}
+.kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:1rem}
 .kpi-card{
   background:var(--card);
   border:1px solid var(--border);
@@ -325,6 +325,12 @@ canvas{max-width:100%}
         <div class="kpi-label">Budget Payback</div>
         <div class="kpi-value" id="kpi-payback">—</div>
         <div class="kpi-sub">on $12M investment</div>
+      </div>
+      <div class="kpi-card" style="border-color:rgba(34,211,238,0.3);background:linear-gradient(135deg,rgba(34,211,238,0.05),transparent)">
+        <div class="kpi-icon" style="background:rgba(34,211,238,.12)">🔮</div>
+        <div class="kpi-label">Projected <span id="kpi-next-month">Next Month</span></div>
+        <div class="kpi-value" id="kpi-forecast-cost">—</div>
+        <div class="kpi-sub"><span id="kpi-forecast-temp">—</span> avg temp</div>
       </div>
     </div>
   </div>
@@ -727,6 +733,12 @@ function buildKPIs(){
   animateCount(document.getElementById('kpi-savings'), s.potential_savings_usd, v => fmt.cost(v));
   document.getElementById('kpi-savings-pct').textContent = s.potential_savings_pct+'%';
   animateCount(document.getElementById('kpi-payback'), s.payback_years, v => v.toFixed(1)+' yrs');
+
+  if(D.forecast){
+    document.getElementById('kpi-next-month').textContent = D.forecast.next_month;
+    animateCount(document.getElementById('kpi-forecast-cost'), D.forecast.predicted_cost, v => fmt.cost(v));
+    document.getElementById('kpi-forecast-temp').textContent = D.forecast.temp_c + '°C';
+  }
 }
 
 // ───── Energy Mix Donut ─────
