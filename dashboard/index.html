@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PurdueEnergyIQ — Campus Energy Intelligence Dashboard</title>
+<meta name="description" content="Real-time campus energy monitoring and optimization dashboard for Purdue University"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="data.js"></script>
+<style>
+:root {
+  --bg:       #07091a;
+  --bg2:      #0c1028;
+  --card:     rgba(14,20,48,0.85);
+  --border:   rgba(207,185,145,0.12);
+  --gold:     #CFB991;
+  --gold2:    #e8d5a8;
+  --blue:     #5b8af7;
+  --cyan:     #22d3ee;
+  --green:    #34d399;
+  --orange:   #fb923c;
+  --red:      #f87171;
+  --purple:   #a78bfa;
+  --text:     #e8eaf0;
+  --muted:    #7a8399;
+  --radius:   14px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Inter',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(207,185,145,0.06) 0%,transparent 60%),
+    radial-gradient(ellipse 60% 40% at 90% 90%, rgba(91,138,247,0.05) 0%,transparent 60%);
+}
+
+/* ────── HEADER ────── */
+header{
+  position:sticky;top:0;z-index:100;
+  background:rgba(7,9,26,0.92);
+  backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  padding:0 2rem;
+  display:flex;align-items:center;gap:1.5rem;
+  height:64px;
+}
+.logo{
+  display:flex;align-items:center;gap:.75rem;
+  font-weight:800;font-size:1.1rem;letter-spacing:-.02em;
+  color:var(--gold);white-space:nowrap;
+}
+.logo-icon{
+  width:36px;height:36px;border-radius:8px;
+  background:linear-gradient(135deg,#CFB991,#8a6c3d);
+  display:grid;place-items:center;
+  font-size:1.1rem;font-weight:900;color:#07091a;
+}
+.logo span{color:var(--text)}
+.header-mid{flex:1;display:flex;align-items:center;gap:1rem;padding-left:1rem}
+.nav-tabs{display:flex;gap:.25rem}
+.nav-tab{
+  padding:.4rem .9rem;border-radius:8px;
+  font-size:.82rem;font-weight:500;cursor:pointer;
+  border:none;background:transparent;color:var(--muted);
+  transition:all .2s;
+}
+.nav-tab.active,.nav-tab:hover{background:rgba(207,185,145,.1);color:var(--gold)}
+.header-right{display:flex;align-items:center;gap:1rem;font-size:.8rem;color:var(--muted)}
+.live-badge{
+  display:flex;align-items:center;gap:.4rem;
+  background:rgba(52,211,153,.1);color:var(--green);
+  padding:.3rem .7rem;border-radius:20px;font-size:.75rem;font-weight:600;
+}
+.live-dot{
+  width:7px;height:7px;border-radius:50%;background:var(--green);
+  animation:pulse 2s infinite;
+}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
+#clock{font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--gold)}
+
+/* ────── MAIN ────── */
+main{max-width:1600px;margin:0 auto;padding:1.5rem 2rem 4rem}
+.section{margin-bottom:2rem}
+.section-title{
+  font-size:.7rem;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted);
+  margin-bottom:1rem;display:flex;align-items:center;gap:.5rem;
+}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ────── CARDS ────── */
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  backdrop-filter:blur(12px);
+  transition:border-color .3s,transform .2s;
+}
+.card:hover{border-color:rgba(207,185,145,.25);transform:translateY(-1px)}
+.card-body{padding:1.25rem}
+.card-title{font-size:.72rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem}
+
+/* ────── KPI GRID ────── */
+.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:1rem}
+.kpi-card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:1.25rem;
+  position:relative;overflow:hidden;
+  transition:all .3s;
+}
+.kpi-card::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(207,185,145,.04) 0%,transparent 70%);
+  pointer-events:none;
+}
+.kpi-card:hover{border-color:rgba(207,185,145,.3);transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,.4)}
+.kpi-icon{
+  width:38px;height:38px;border-radius:10px;
+  display:grid;place-items:center;font-size:1.1rem;
+  margin-bottom:.8rem;
+}
+.kpi-label{font-size:.7rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.3rem}
+.kpi-value{font-size:1.75rem;font-weight:800;line-height:1;letter-spacing:-.03em;color:var(--text)}
+.kpi-sub{font-size:.72rem;color:var(--muted);margin-top:.4rem;display:flex;align-items:center;gap:.3rem}
+.kpi-badge{
+  display:inline-flex;align-items:center;gap:.2rem;
+  padding:.15rem .5rem;border-radius:20px;font-size:.65rem;font-weight:700;
+}
+.badge-green{background:rgba(52,211,153,.15);color:var(--green)}
+.badge-red{background:rgba(248,113,113,.15);color:var(--red)}
+.badge-gold{background:rgba(207,185,145,.15);color:var(--gold)}
+
+/* ────── CHART GRID ────── */
+.chart-grid-2{display:grid;grid-template-columns:2fr 3fr;gap:1rem}
+.chart-grid-2b{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.chart-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem}
+canvas{max-width:100%}
+.chart-wrap{position:relative;width:100%}
+
+/* ────── TABLE ────── */
+.data-table{width:100%;border-collapse:collapse;font-size:.82rem}
+.data-table th{
+  padding:.6rem .9rem;text-align:left;
+  font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted);border-bottom:1px solid var(--border);
+}
+.data-table td{padding:.65rem .9rem;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
+.data-table tbody tr:hover{background:rgba(207,185,145,.03)}
+.eui-bar{
+  height:6px;border-radius:3px;
+  background:linear-gradient(90deg,var(--green),var(--orange),var(--red));
+  position:relative;margin-top:3px;
+}
+.grade{
+  display:inline-block;width:24px;height:24px;border-radius:6px;
+  text-align:center;line-height:24px;font-size:.7rem;font-weight:800;
+}
+.grade-A{background:rgba(52,211,153,.2);color:var(--green)}
+.grade-B{background:rgba(91,138,247,.2);color:var(--blue)}
+.grade-C{background:rgba(251,146,60,.2);color:var(--orange)}
+.grade-D{background:rgba(248,113,113,.2);color:var(--red)}
+.grade-F{background:rgba(248,113,113,.35);color:#ff4444}
+
+/* ────── BUDGET ────── */
+.budget-items{display:flex;flex-direction:column;gap:.6rem}
+.budget-item{
+  display:flex;align-items:center;gap:.75rem;
+  padding:.7rem 1rem;
+  background:rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.05);
+  border-radius:10px;transition:border-color .2s;
+}
+.budget-item:hover{border-color:rgba(207,185,145,.2)}
+.budget-dot{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+.budget-name{flex:1;font-size:.82rem;font-weight:500}
+.budget-amount{font-weight:700;font-size:.85rem;color:var(--gold);font-family:'JetBrains Mono',monospace}
+.budget-savings{font-size:.72rem;color:var(--green);white-space:nowrap}
+
+/* ────── RECS ────── */
+.recs-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+.rec-card{
+  padding:1.25rem;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  position:relative;overflow:hidden;
+  transition:all .3s;
+}
+.rec-card:hover{border-color:rgba(207,185,145,.3);transform:translateY(-2px)}
+.rec-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+}
+.rec-card.priority-high::before{background:linear-gradient(90deg,var(--red),var(--orange))}
+.rec-card.priority-med::before{background:linear-gradient(90deg,var(--orange),var(--gold))}
+.rec-card.priority-low::before{background:linear-gradient(90deg,var(--green),var(--cyan))}
+.rec-icon{font-size:1.8rem;margin-bottom:.7rem}
+.rec-title{font-weight:700;font-size:.95rem;margin-bottom:.4rem}
+.rec-desc{font-size:.8rem;color:var(--muted);line-height:1.5;margin-bottom:.9rem}
+.rec-tags{display:flex;flex-wrap:wrap;gap:.4rem}
+.rec-tag{
+  padding:.2rem .6rem;border-radius:20px;font-size:.68rem;font-weight:600;
+  background:rgba(207,185,145,.1);color:var(--gold);
+}
+
+/* ────── MISC ────── */
+.metric-row{display:flex;justify-content:space-between;align-items:center;padding:.5rem 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.metric-row:last-child{border-bottom:none}
+.metric-label{font-size:.8rem;color:var(--muted)}
+.metric-val{font-size:.85rem;font-weight:600;font-family:'JetBrains Mono',monospace}
+
+/* ────── ANOMALIES ────── */
+.anomaly-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(340px, 1fr));gap:1.25rem}
+.anomaly-card{
+  background:rgba(248,113,113,0.03);
+  border:1px solid rgba(248,113,113,0.15);
+  border-radius:var(--radius);
+  padding:1.5rem;
+  position:relative;overflow:hidden;
+  transition:all .3s ease;
+}
+.anomaly-card:hover{
+  border-color:rgba(248,113,113,0.4);
+  background:rgba(248,113,113,0.06);
+  transform:translateY(-3px);
+  box-shadow:0 12px 40px rgba(248,113,113,0.1);
+}
+.anomaly-card::before{
+  content:'⚠️ ANOMALY';position:absolute;top:12px;right:12px;
+  font-size:.65rem;font-weight:800;color:var(--red);
+  letter-spacing:.05em;
+}
+.anomaly-header{display:flex;align-items:center;gap:.75rem;margin-bottom:1rem}
+.anomaly-id{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--red)}
+.anomaly-usage{font-size:.8rem;color:var(--muted);font-weight:600;text-transform:uppercase}
+.anomaly-stats{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1rem 0}
+.anomaly-metric{display:flex;flex-direction:column;gap:.2rem}
+.anomaly-label{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.anomaly-val{font-size:1.1rem;font-weight:700;font-family:'JetBrains Mono',monospace}
+.anomaly-score-bar{height:4px;background:rgba(255,255,255,0.05);border-radius:2px;margin:.5rem 0;position:relative}
+.anomaly-score-fill{position:absolute;top:0;left:0;height:100%;border-radius:2px;background:var(--red)}
+.anomaly-insight{font-size:.78rem;line-height:1.5;color:var(--text);margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(248,113,113,0.1)}
+
+.tab-content{display:none}
+.tab-content.active{display:block}
+
+@media(max-width:1100px){
+  .kpi-grid{grid-template-columns:repeat(3,1fr)}
+  .chart-grid-2,.chart-grid-2b,.chart-grid-3{grid-template-columns:1fr}
+  .recs-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:700px){
+  .kpi-grid{grid-template-columns:1fr 1fr}
+  .recs-grid{grid-template-columns:1fr}
+  main{padding:1rem}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══ -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">P</div>
+    PurdueEnergy<span>IQ</span>
+  </div>
+  <div class="header-mid">
+    <nav class="nav-tabs">
+      <button class="nav-tab active" onclick="showTab('overview')">Overview</button>
+      <button class="nav-tab" onclick="showTab('buildings')">Buildings</button>
+      <button class="nav-tab" style="color:var(--red)" onclick="showTab('anomalies')">⚠️ Anomalies</button>
+      <button class="nav-tab" onclick="showTab('budget')">Budget & ROI</button>
+      <button class="nav-tab" onclick="showTab('insights')">Insights</button>
+    </nav>
+  </div>
+  <div class="header-right">
+    <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+    <span id="clock"></span>
+    <span>West Lafayette, IN</span>
+  </div>
+</header>
+
+<!-- ═══ MAIN ═══ -->
+<main>
+
+<!-- ══ OVERVIEW TAB ══ -->
+<div id="tab-overview" class="tab-content active">
+
+  <!-- KPI CARDS -->
+  <div class="section">
+    <div class="section-title">Campus-Wide Energy Snapshot</div>
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background:rgba(207,185,145,.12)">🏛️</div>
+        <div class="kpi-label">Buildings Monitored</div>
+        <div class="kpi-value" id="kpi-buildings">—</div>
+        <div class="kpi-sub"><span id="kpi-sites">—</span> campus zones</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background:rgba(248,113,113,.12)">💸</div>
+        <div class="kpi-label">Annual Energy Cost</div>
+        <div class="kpi-value" id="kpi-cost">—</div>
+        <div class="kpi-sub">all utilities combined</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background:rgba(91,138,247,.12)">⚡</div>
+        <div class="kpi-label">Electricity Used</div>
+        <div class="kpi-value" id="kpi-elec">—</div>
+        <div class="kpi-sub">kWh annually</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background:rgba(52,211,153,.12)">🌿</div>
+        <div class="kpi-label">Savings Potential</div>
+        <div class="kpi-value" id="kpi-savings">—</div>
+        <div class="kpi-sub"><span class="kpi-badge badge-green" id="kpi-savings-pct">—</span> reduction</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background:rgba(167,139,250,.12)">📊</div>
+        <div class="kpi-label">Budget Payback</div>
+        <div class="kpi-value" id="kpi-payback">—</div>
+        <div class="kpi-sub">on $12M investment</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ENERGY MIX + MONTHLY TREND -->
+  <div class="section">
+    <div class="section-title">Energy Distribution & Seasonal Patterns</div>
+    <div class="chart-grid-2">
+      <div class="card">
+        <div class="card-body">
+          <div class="card-title">Energy Mix by Source</div>
+          <div class="chart-wrap" style="height:220px">
+            <canvas id="donutChart"></canvas>
+          </div>
+          <div id="mix-legend" style="margin-top:1rem;display:flex;flex-direction:column;gap:.4rem"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div class="card-title">Monthly Energy Consumption (kBtu)</div>
+          <div class="chart-wrap" style="height:280px">
+            <canvas id="monthlyChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BUILDING TYPES + DAILY LOAD -->
+  <div class="section">
+    <div class="section-title">Consumption by Category & Daily Load Profile</div>
+    <div class="chart-grid-2b">
+      <div class="card">
+        <div class="card-body">
+          <div class="card-title">Energy by Building Type</div>
+          <div class="chart-wrap" style="height:280px">
+            <canvas id="typeChart"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div class="card-title">24-Hour Load Profile (avg per reading)</div>
+          <div class="chart-wrap" style="height:280px">
+            <canvas id="hourlyChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WEATHER CORRELATION + AGE -->
+  <div class="section">
+    <div class="section-title">Weather Impact & Infrastructure Age</div>
+    <div class="chart-grid-2b">
+      <div class="card">
+        <div class="card-body">
+          <div class="card-title">Temperature vs. Energy Demand</div>
+          <div class="chart-wrap" style="height:260px">
+            <canvas id="weatherChart"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div class="card-title">Buildings by Construction Decade</div>
+          <div class="chart-wrap" style="height:260px">
+            <canvas id="ageChart"></canvas>
+          </div>
+          <p style="font-size:.72rem;color:var(--muted);margin-top:.75rem">⚠️ Buildings built before 1990 have significantly lower energy efficiency standards</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /overview -->
+
+<!-- ══ BUILDINGS TAB ══ -->
+<div id="tab-buildings" class="tab-content">
+
+  <div class="section">
+    <div class="section-title">Top 20 Highest Energy Consuming Buildings</div>
+    <div class="card">
+      <div class="card-body">
+        <table class="data-table" id="top-table">
+          <thead>
+            <tr>
+              <th>#</th><th>Building ID</th><th>Primary Use</th>
+              <th>Area (sq ft)</th><th>Year Built</th>
+              <th>Annual Energy (kBtu)</th><th>EUI (kBtu/sqft)</th>
+              <th>Est. Annual Cost</th><th>Grade</th>
+            </tr>
+          </thead>
+          <tbody id="top-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Most Inefficient Buildings — Priority Upgrade Targets</div>
+    <div class="card">
+      <div class="card-body">
+        <p style="font-size:.8rem;color:var(--muted);margin-bottom:1rem">Buildings ranked by Energy Use Intensity (EUI). National average for Education buildings: ~180 kBtu/sqft/yr. High EUI = poor efficiency = highest ROI for upgrades.</p>
+        <table class="data-table" id="ineff-table">
+          <thead>
+            <tr>
+              <th>#</th><th>Building ID</th><th>Use Type</th>
+              <th>Area (sq ft)</th><th>Year Built</th>
+              <th>EUI (kBtu/sqft)</th><th>vs. Benchmark</th>
+              <th>Annual Cost</th><th>Grade</th>
+            </tr>
+          </thead>
+          <tbody id="ineff-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Zone / Site Comparison</div>
+    <div class="card">
+      <div class="card-body">
+        <div class="card-title">Energy Consumption by Campus Zone</div>
+        <div class="chart-wrap" style="height:300px">
+          <canvas id="siteChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /buildings -->
+
+<!-- ══ ANOMALIES TAB ══ -->
+<div id="tab-anomalies" class="tab-content">
+  <div class="section">
+    <div class="section-title">Statistical Energy Anomalies (High-Intensity Outliers)</div>
+    <div class="card" style="margin-bottom:2rem;border-color:rgba(248,113,113,0.2)">
+      <div class="card-body">
+        <h3 style="color:var(--red);margin-bottom:.5rem;display:flex;align-items:center;gap:.5rem">🔍 Detection Engine: Z-Score Analysis</h3>
+        <p style="font-size:.85rem;line-height:1.6;color:var(--muted)">
+          Our algorithm groups buildings by their <strong>Primary Use</strong> (e.g., Office vs. Data Center) and calculates the average Energy Use Intensity (EUI). 
+          Buildings flagged below are <strong>statistical outliers</strong>, showing usage <strong>&gt;2.0 standard deviations</strong> above their peers. 
+          This typically indicates mechanical malfunctions, control errors, or significant operational waste.
+        </p>
+      </div>
+    </div>
+    <div class="anomaly-grid" id="anomaly-grid"></div>
+  </div>
+</div>
+
+<!-- ══ BUDGET TAB ══ -->
+<div id="tab-budget" class="tab-content">
+
+  <div class="section">
+    <div class="section-title">$12 Million Budget Allocation Strategy</div>
+    <div class="chart-grid-2b">
+      <div class="card">
+        <div class="card-body">
+          <div class="card-title">Investment Breakdown</div>
+          <div class="chart-wrap" style="height:230px"><canvas id="budgetDonut"></canvas></div>
+          <div id="budget-legend" style="margin-top:1rem"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div class="card-title">Annual Savings per Initiative</div>
+          <div class="chart-wrap" style="height:230px"><canvas id="savingsBar"></canvas></div>
+          <p style="font-size:.72rem;color:var(--muted);margin-top:.75rem">💡 Total projected annual savings: <strong style="color:var(--green)">$1.78M/year</strong></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">10-Year Cumulative Savings Projection</div>
+    <div class="card">
+      <div class="card-body">
+        <div class="card-title">Cumulative Net Savings vs. $12M Budget</div>
+        <div class="chart-wrap" style="height:280px"><canvas id="roiChart"></canvas></div>
+        <p style="font-size:.72rem;color:var(--muted);margin-top:.75rem">📈 Investment breaks even at ~6.7 years. Over 10 years: <strong style="color:var(--green)">$5.8M net gain</strong></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Initiative Details & ROI</div>
+    <div class="card">
+      <div class="card-body">
+        <table class="data-table">
+          <thead>
+            <tr><th>Initiative</th><th>Investment</th><th>Annual Savings</th><th>Payback Period</th><th>CO₂ Reduced (tons/yr)</th><th>Priority</th></tr>
+          </thead>
+          <tbody id="budget-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /budget -->
+
+<!-- ══ INSIGHTS TAB ══ -->
+<div id="tab-insights" class="tab-content">
+
+  <div class="section">
+    <div class="section-title">Key Findings & Recommendations</div>
+    <div class="recs-grid" id="recs-grid"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">System Performance Metrics</div>
+    <div class="chart-grid-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="card-title">Energy Cost Breakdown</div>
+          <div id="cost-metrics"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div class="card-title">Portfolio Summary</div>
+          <div id="portfolio-metrics"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div class="card-title">Efficiency Benchmarks</div>
+          <div id="benchmark-metrics"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /insights -->
+
+</main>
+
+<script>
+// ═══ DATA CHECK ═══
+const D = (typeof CAMPUS_DATA !== 'undefined') ? CAMPUS_DATA : null;
+
+// ═══ UTILS ═══
+const fmt = {
+  num: v => v >= 1e9 ? (v/1e9).toFixed(2)+'B' : v >= 1e6 ? (v/1e6).toFixed(1)+'M' : v >= 1e3 ? (v/1e3).toFixed(0)+'K' : Math.round(v).toLocaleString(),
+  cost: v => v >= 1e6 ? '$'+(v/1e6).toFixed(2)+'M' : '$'+(v/1e3).toFixed(0)+'K',
+  pct: v => v.toFixed(1)+'%',
+};
+
+function lerp(a,b,t){return a+(b-a)*t}
+
+Chart.defaults.color = '#7a8399';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
+Chart.defaults.font.family = "'Inter', sans-serif";
+
+const PALETTE = {
+  gold:   '#CFB991', gold_t: 'rgba(207,185,145,0.15)',
+  blue:   '#5b8af7', blue_t: 'rgba(91,138,247,0.15)',
+  cyan:   '#22d3ee', cyan_t: 'rgba(34,211,238,0.15)',
+  orange: '#fb923c', orange_t: 'rgba(251,146,60,0.15)',
+  red:    '#f87171', red_t: 'rgba(248,113,113,0.15)',
+  green:  '#34d399', green_t: 'rgba(52,211,153,0.15)',
+  purple: '#a78bfa', purple_t: 'rgba(167,139,250,0.15)',
+};
+
+// Budget colors
+const BUDGET_COLORS = [
+  '#f87171','#fb923c','#fbbf24','#34d399','#22d3ee','#5b8af7','#a78bfa'
+];
+
+// ═══ CLOCK ═══
+function updateClock(){
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ═══ COUNTER ANIMATION ═══
+function animateCount(el, target, formatter) {
+  const dur = 1400, fps = 60, steps = Math.round(dur/(1000/fps));
+  let i = 0;
+  const timer = setInterval(() => {
+    i++;
+    const t = i/steps;
+    const ease = 1 - Math.pow(1-t, 3);
+    el.textContent = formatter(target * ease);
+    if(i >= steps){ el.textContent = formatter(target); clearInterval(timer); }
+  }, 1000/fps);
+}
+
+// ═══ GRADE HELPER ═══
+function euiGrade(eui, use) {
+  const benchmarks = {
+    'Education': 180, 'Office': 150, 'Entertainment/public assembly': 200,
+    'Public services': 160, 'Lodging/residential': 130, 'Healthcare': 300,
+    'Parking':80,'Warehouse/storage':70,'Other':160
+  };
+  const bm = benchmarks[use] || 180;
+  const ratio = eui / bm;
+  if(ratio < 0.6)  return 'A';
+  if(ratio < 0.85) return 'B';
+  if(ratio < 1.1)  return 'C';
+  if(ratio < 1.5)  return 'D';
+  return 'F';
+}
+
+// ═══ TABS ═══
+function showTab(name) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+// ═══ INITIALIZE ═══
+window.addEventListener('load', () => {
+  if(!D){
+    document.querySelector('main').innerHTML = `
+      <div style="text-align:center;padding:4rem 2rem">
+        <div style="font-size:3rem;margin-bottom:1rem">⚠️</div>
+        <h2 style="color:var(--gold);margin-bottom:.75rem">Data not found</h2>
+        <p style="color:var(--muted)">Please run <code style="background:rgba(255,255,255,.05);padding:.2rem .5rem;border-radius:4px">python3 process_data.py</code> first to generate the dashboard data.</p>
+      </div>`;
+    return;
+  }
+  buildKPIs();
+  buildDonut();
+  buildMonthly();
+  buildTypeChart();
+  buildHourly();
+  buildWeather();
+  buildAge();
+  buildBuildingTables();
+  buildSiteChart();
+  buildAnomalies();
+  buildBudget();
+  buildROI();
+  buildBudgetTable();
+  buildRecs();
+  buildMetrics();
+});
+
+// ───── Anomaly Detection ─────
+function buildAnomalies(){
+  const grid = document.getElementById('anomaly-grid');
+  if(!D.anomalies || D.anomalies.length === 0){
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--muted)">No high-intensity anomalies detected at this time.</div>`;
+    return;
+  }
+
+  D.anomalies.forEach(a => {
+    const wasteRatio = (a.z_score / 4).toFixed(2); // purely visual for bar
+    const potentialSavings = Math.round(a.cost * (1 - 1/a.z_score)); 
+    
+    grid.innerHTML += `
+      <div class="anomaly-card">
+        <div class="anomaly-header">
+          <div class="anomaly-id">BUILDING #${String(a.id).padStart(4,'0')}</div>
+        </div>
+        <div class="anomaly-usage">${a.use}</div>
+        
+        <div class="anomaly-stats">
+          <div class="anomaly-metric">
+            <div class="anomaly-label">Intensity Score</div>
+            <div class="anomaly-val" style="color:var(--red)">+${a.z_score}σ</div>
+          </div>
+          <div class="anomaly-metric">
+            <div class="anomaly-label">EUI (kbtu/sqft)</div>
+            <div class="anomaly-val">${a.eui}</div>
+          </div>
+        </div>
+
+        <div class="anomaly-score-bar">
+          <div class="anomaly-score-fill" style="width:${Math.min(a.z_score*25, 100)}%"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:.6rem;color:var(--muted);text-transform:uppercase">
+          <span>Avg</span>
+          <span>Critically High</span>
+        </div>
+
+        <div class="anomaly-insight">
+          This building's energy intensity is significantly higher than its category average. 
+          Estimated <strong>${fmt.cost(potentialSavings)}/year</strong> in potential waste due to operational inefficiency.
+          <br><br>
+          <span style="color:var(--orange)">⚠️ Recommended: Immediate HVAC & Control System Audit.</span>
+        </div>
+      </div>
+    `;
+  });
+}
+
+// ───── KPI Cards ─────
+function buildKPIs(){
+  const s = D.summary;
+  animateCount(document.getElementById('kpi-buildings'), s.total_buildings, v => Math.round(v).toLocaleString());
+  document.getElementById('kpi-sites').textContent = s.total_sites + ' sites,';
+  animateCount(document.getElementById('kpi-cost'), s.annual_cost_usd, v => fmt.cost(v));
+  animateCount(document.getElementById('kpi-elec'), s.annual_electricity_kwh, v => fmt.num(v));
+  animateCount(document.getElementById('kpi-savings'), s.potential_savings_usd, v => fmt.cost(v));
+  document.getElementById('kpi-savings-pct').textContent = s.potential_savings_pct+'%';
+  animateCount(document.getElementById('kpi-payback'), s.payback_years, v => v.toFixed(1)+' yrs');
+}
+
+// ───── Energy Mix Donut ─────
+function buildDonut(){
+  const mix = D.energy_mix;
+  const colors = [PALETTE.blue, PALETTE.cyan, PALETTE.orange, PALETTE.red];
+  const ctx = document.getElementById('donutChart').getContext('2d');
+  new Chart(ctx, {
+    type:'doughnut',
+    data:{labels:mix.labels, datasets:[{data:mix.kbtu, backgroundColor:colors, borderWidth:2, borderColor:'#07091a', hoverBorderColor:'#07091a', hoverOffset:6}]},
+    options:{
+      responsive:true, maintainAspectRatio:false, cutout:'68%',
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label: ctx => ` ${ctx.label}: ${fmt.num(ctx.raw)} kBtu`}}}
+    }
+  });
+  const total = mix.kbtu.reduce((a,b)=>a+b,0);
+  const leg = document.getElementById('mix-legend');
+  mix.labels.forEach((l,i)=>{
+    const pct = (mix.kbtu[i]/total*100).toFixed(1);
+    const cost = fmt.cost(mix.cost_usd[i]);
+    leg.innerHTML += `<div style="display:flex;align-items:center;gap:.6rem;font-size:.78rem">
+      <div style="width:10px;height:10px;border-radius:3px;background:${colors[i]};flex-shrink:0"></div>
+      <span style="flex:1;color:var(--muted)">${l}</span>
+      <span style="font-weight:600">${pct}%</span>
+      <span style="color:var(--muted);font-family:JetBrains Mono,monospace">${cost}/yr</span>
+    </div>`;
+  });
+}
+
+// ───── Monthly Chart ─────
+function buildMonthly(){
+  const me = D.monthly_energy;
+  const ctx = document.getElementById('monthlyChart').getContext('2d');
+  function makeGrad(color, ctx2, opacity=0.3){
+    const g = ctx2.createLinearGradient(0,0,0,300);
+    g.addColorStop(0, color.replace(')',`,${opacity})`).replace('rgb','rgba'));
+    g.addColorStop(1, 'transparent');
+    return g;
+  }
+  const datasets = [
+    {label:'Electricity',   data:me.electricity,  borderColor:PALETTE.blue,   backgroundColor:'rgba(91,138,247,0.15)',   fill:true},
+    {label:'Chilled Water', data:me.chilledwater, borderColor:PALETTE.cyan,   backgroundColor:'rgba(34,211,238,0.12)',   fill:true},
+    {label:'Steam',         data:me.steam,        borderColor:PALETTE.orange, backgroundColor:'rgba(251,146,60,0.12)',   fill:true},
+    {label:'Hot Water',     data:me.hotwater,     borderColor:PALETTE.red,    backgroundColor:'rgba(248,113,113,0.12)',  fill:true},
+  ].map(d=>({...d, tension:0.4, borderWidth:2.5, pointRadius:4, pointHoverRadius:6, pointBackgroundColor:d.borderColor}));
+
+  new Chart(ctx, {
+    type:'line',
+    data:{labels:me.labels, datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index', intersect:false},
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,0.04)'}},
+        y:{grid:{color:'rgba(255,255,255,0.04)'}, ticks:{callback:v=>fmt.num(v)}}
+      },
+      plugins:{legend:{position:'top', labels:{boxWidth:12, padding:16, usePointStyle:true}}}
+    }
+  });
+}
+
+// ───── Building Type Chart ─────
+function buildTypeChart(){
+  const btype = D.by_building_type;
+  const ctx = document.getElementById('typeChart').getContext('2d');
+  const colors = btype.labels.map((_,i)=>`hsl(${40+i*22},70%,60%)`);
+  new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels: btype.labels.map(l=>l.length>24?l.slice(0,22)+'…':l),
+      datasets:[{
+        label:'Total Energy (kBtu)',
+        data:btype.total_kbtu,
+        backgroundColor: colors.map(c=>c.replace(')',', 0.7)').replace('hsl','hsla')),
+        borderColor: colors,
+        borderWidth:1.5, borderRadius:6
+      }]
+    },
+    options:{
+      indexAxis:'y',
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>` ${fmt.num(c.raw)} kBtu`}}},
+      scales:{x:{grid:{color:'rgba(255,255,255,0.04)'}, ticks:{callback:v=>fmt.num(v)}}, y:{grid:{display:false}}}
+    }
+  });
+}
+
+// ───── Hourly Load Profile ─────
+function buildHourly(){
+  const hp = D.hourly_pattern;
+  const ctx = document.getElementById('hourlyChart').getContext('2d');
+  new Chart(ctx, {
+    type:'line',
+    data:{
+      labels:hp.labels,
+      datasets:[
+        {label:'Electricity', data:hp.electricity, borderColor:PALETTE.blue,   backgroundColor:'rgba(91,138,247,0.15)',  fill:true, tension:0.4, borderWidth:2},
+        {label:'Steam',       data:hp.steam,       borderColor:PALETTE.orange, backgroundColor:'rgba(251,146,60,0.12)',  fill:true, tension:0.4, borderWidth:2},
+        {label:'Chilled H2O',data:hp.chilledwater,borderColor:PALETTE.cyan,   backgroundColor:'rgba(34,211,238,0.08)',  fill:true, tension:0.4, borderWidth:2},
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      scales:{
+        x:{ticks:{maxTicksLimit:8}, grid:{color:'rgba(255,255,255,0.04)'}},
+        y:{grid:{color:'rgba(255,255,255,0.04)'}, ticks:{callback:v=>fmt.num(v)}}
+      },
+      plugins:{legend:{position:'top', labels:{boxWidth:10, padding:12, usePointStyle:true}}}
+    }
+  });
+}
+
+// ───── Weather Correlation ─────
+function buildWeather(){
+  const wc = D.weather_correlation;
+  const ctx = document.getElementById('weatherChart').getContext('2d');
+  new Chart(ctx, {
+    type:'line',
+    data:{
+      labels:wc.labels,
+      datasets:[
+        {label:'Avg Temp (°C)', data:wc.avg_temp_c, borderColor:PALETTE.red, yAxisID:'temp', tension:0.4, borderWidth:2, pointRadius:4, pointBackgroundColor:PALETTE.red},
+        {label:'Energy (kBtu)', data:wc.total_kbtu, borderColor:PALETTE.gold, yAxisID:'energy', tension:0.4, borderWidth:2, pointRadius:4, pointBackgroundColor:PALETTE.gold},
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      scales:{
+        temp:  {type:'linear', position:'left',  title:{display:true,text:'Temp (°C)', color:'#f87171'},  grid:{color:'rgba(255,255,255,0.04)'}},
+        energy:{type:'linear', position:'right', title:{display:true,text:'kBtu', color:'#CFB991'}, grid:{display:false}, ticks:{callback:v=>fmt.num(v)}}
+      },
+      plugins:{legend:{position:'top', labels:{boxWidth:10, padding:12, usePointStyle:true}}}
+    }
+  });
+}
+
+// ───── Building Age Chart ─────
+function buildAge(){
+  const ba = D.building_age;
+  const ctx = document.getElementById('ageChart').getContext('2d');
+  const colors = ba.labels.map((l)=>{
+    const d = parseInt(l);
+    if(d < 1970) return PALETTE.red;
+    if(d < 1990) return PALETTE.orange;
+    if(d < 2000) return PALETTE.gold;
+    return PALETTE.green;
+  });
+  new Chart(ctx, {
+    type:'bar',
+    data:{labels:ba.labels, datasets:[{label:'Buildings',data:ba.counts, backgroundColor:colors, borderRadius:6,borderWidth:0}]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false}}, y:{grid:{color:'rgba(255,255,255,0.04)'}}}
+    }
+  });
+}
+
+// ───── Building Tables ─────
+function buildBuildingTables(){
+  const tbody = document.getElementById('top-tbody');
+  D.top_buildings.forEach((b,i)=>{
+    const grade = euiGrade(b.eui, b.use);
+    tbody.innerHTML += `<tr>
+      <td style="color:var(--muted)">${i+1}</td>
+      <td><code style="font-size:.78rem;color:var(--gold)">#${String(b.id).padStart(4,'0')}</code></td>
+      <td>${b.use}</td>
+      <td>${b.sqft.toLocaleString()}</td>
+      <td style="color:${b.year < 1980?'var(--red)':b.year<2000?'var(--orange)':'var(--green)'}">${b.year || '—'}</td>
+      <td style="font-family:JetBrains Mono,monospace">${fmt.num(b.energy)}</td>
+      <td>
+        <div style="font-family:JetBrains Mono,monospace">${b.eui.toFixed(1)}</div>
+        <div class="eui-bar" style="width:${Math.min(b.eui/500*100,100)}%"></div>
+      </td>
+      <td style="font-family:JetBrains Mono,monospace;color:var(--gold)">${fmt.cost(b.cost)}</td>
+      <td><span class="grade grade-${grade}">${grade}</span></td>
+    </tr>`;
+  });
+
+  const ibody = document.getElementById('ineff-tbody');
+  const benchmarks = {'Education':180,'Office':150,'Entertainment/public assembly':200,'Public services':160,'Lodging/residential':130,'Healthcare':300};
+  D.inefficient_buildings.forEach((b,i)=>{
+    const bm = benchmarks[b.use]||180;
+    const ratio = b.eui/bm;
+    const grade = euiGrade(b.eui, b.use);
+    ibody.innerHTML += `<tr>
+      <td style="color:var(--muted)">${i+1}</td>
+      <td><code style="font-size:.78rem;color:var(--red)">#${String(b.id).padStart(4,'0')}</code></td>
+      <td>${b.use}</td>
+      <td>${b.sqft.toLocaleString()}</td>
+      <td style="color:${b.year<1980?'var(--red)':b.year<2000?'var(--orange)':'var(--green)'}">${b.year||'—'}</td>
+      <td style="font-family:JetBrains Mono,monospace;color:var(--red);font-weight:700">${b.eui.toFixed(1)}</td>
+      <td style="color:var(--red)">${(ratio*100).toFixed(0)}% of avg</td>
+      <td style="font-family:JetBrains Mono,monospace;color:var(--gold)">${fmt.cost(b.cost)}</td>
+      <td><span class="grade grade-${grade}">${grade}</span></td>
+    </tr>`;
+  });
+}
+
+// ───── Site Chart ─────
+function buildSiteChart(){
+  const sc = D.site_comparison;
+  const ctx = document.getElementById('siteChart').getContext('2d');
+  new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels:sc.labels,
+      datasets:[
+        {label:'Energy (kBtu)', data:sc.energy_kbtu, backgroundColor:'rgba(207,185,145,0.6)', borderColor:PALETTE.gold, borderWidth:1.5, borderRadius:6, yAxisID:'energy'},
+        {label:'Cost ($)', data:sc.cost_usd, backgroundColor:'rgba(91,138,247,0.5)', borderColor:PALETTE.blue, borderWidth:1.5, borderRadius:6, yAxisID:'cost'},
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      scales:{
+        energy:{position:'left',  ticks:{callback:v=>fmt.num(v)}, grid:{color:'rgba(255,255,255,0.04)'}},
+        cost:  {position:'right', ticks:{callback:v=>fmt.cost(v)}, grid:{display:false}},
+        x:{grid:{display:false}}
+      },
+      plugins:{legend:{position:'top', labels:{boxWidth:12, padding:16, usePointStyle:true}}}
+    }
+  });
+}
+
+// ───── Budget Donut ─────
+function buildBudget(){
+  const items = D.budget_allocation.items;
+  const ctx = document.getElementById('budgetDonut').getContext('2d');
+  new Chart(ctx, {
+    type:'doughnut',
+    data:{
+      labels:items.map(i=>i.name),
+      datasets:[{data:items.map(i=>i.amount), backgroundColor:BUDGET_COLORS, borderWidth:2, borderColor:'#07091a', hoverOffset:6}]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, cutout:'62%',
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>` ${c.label}: $${(c.raw/1e6).toFixed(1)}M`}}}
+    }
+  });
+
+  const leg = document.getElementById('budget-legend');
+  const total = items.reduce((a,b)=>a+b.amount,0);
+  items.forEach((it,i)=>{
+    leg.innerHTML += `<div style="display:flex;align-items:center;gap:.6rem;font-size:.76rem;margin-bottom:.35rem">
+      <div style="width:10px;height:10px;border-radius:3px;background:${BUDGET_COLORS[i]};flex-shrink:0"></div>
+      <span style="flex:1;color:var(--muted)">${it.name}</span>
+      <span style="font-weight:700;font-family:JetBrains Mono,monospace">$${(it.amount/1e6).toFixed(1)}M</span>
+      <span style="color:var(--muted)">${(it.amount/total*100).toFixed(0)}%</span>
+    </div>`;
+  });
+
+  // Savings bar chart
+  const ctx2 = document.getElementById('savingsBar').getContext('2d');
+  new Chart(ctx2, {
+    type:'bar',
+    data:{
+      labels:items.filter(i=>i.annual_savings>0).map(i=>i.name.length>18?i.name.slice(0,16)+'…':i.name),
+      datasets:[{
+        label:'Annual Savings',
+        data:items.filter(i=>i.annual_savings>0).map(i=>i.annual_savings),
+        backgroundColor:BUDGET_COLORS.slice(0,6).map(c=>c+'99'),
+        borderColor:BUDGET_COLORS, borderWidth:1.5, borderRadius:6
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:c>>`$${(c.raw/1e3).toFixed(0)}K/yr`}}},
+      scales:{x:{grid:{display:false}}, y:{grid:{color:'rgba(255,255,255,0.04)'}, ticks:{callback:v=>'$'+(v/1e3).toFixed(0)+'K'}}}
+    }
+  });
+}
+
+// ───── ROI Chart ─────
+function buildROI(){
+  const items = D.budget_allocation.items;
+  const totalSavings = items.reduce((a,b)=>a+b.annual_savings,0);
+  const budget = 12_000_000;
+  const years = Array.from({length:11},(_,i)=>i===0?'Now':'Yr '+i);
+  const cumSavings = years.map((_,i)=>i*totalSavings - budget);
+  const ctx = document.getElementById('roiChart').getContext('2d');
+  new Chart(ctx, {
+    type:'line',
+    data:{
+      labels:years,
+      datasets:[
+        {label:'Net Cumulative Savings',data:cumSavings, borderColor:PALETTE.green, backgroundColor:'rgba(52,211,153,0.1)', fill:true, tension:0.3, borderWidth:2.5, pointRadius:4, pointBackgroundColor:cumSavings.map(v=>v>=0?PALETTE.green:PALETTE.red)},
+        {label:'Break-even Line',data:years.map(()=>0), borderColor:'rgba(255,255,255,0.2)', borderWidth:1, borderDash:[5,5], pointRadius:0}
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      scales:{
+        x:{grid:{display:false}},
+        y:{grid:{color:'rgba(255,255,255,0.04)'}, ticks:{callback:v=>v>=0?'$'+fmt.num(v):'-$'+fmt.num(Math.abs(v))}}
+      },
+      plugins:{legend:{position:'top', labels:{boxWidth:12, padding:16, usePointStyle:true}}}
+    }
+  });
+}
+
+// ───── Budget Table ─────
+function buildBudgetTable(){
+  const tbody = document.getElementById('budget-tbody');
+  const priorities = ['🔴 Critical','🔴 Critical','🟡 Medium','🟢 High ROI','🟡 Medium','🟡 Medium','⚪ Reserve'];
+  D.budget_allocation.items.forEach((it,i)=>{
+    const pb = it.annual_savings > 0 ? (it.amount/it.annual_savings).toFixed(1)+' yrs' : '—';
+    tbody.innerHTML += `<tr>
+      <td style="font-weight:600">${it.name}</td>
+      <td style="font-family:JetBrains Mono,monospace;color:var(--gold);font-weight:700">$${(it.amount/1e6).toFixed(1)}M</td>
+      <td style="font-family:JetBrains Mono,monospace;color:var(--green)">${it.annual_savings?'$'+(it.annual_savings/1e3).toFixed(0)+'K/yr':'—'}</td>
+      <td style="font-family:JetBrains Mono,monospace">${pb}</td>
+      <td style="color:var(--cyan)">${it.co2_tons>0?it.co2_tons.toLocaleString()+' tons':'—'}</td>
+      <td>${priorities[i]}</td>
+    </tr>`;
+  });
+}
+
+// ───── Recommendations ─────
+function buildRecs(){
+  const recs = [
+    {
+      priority:'high', icon:'🔥',
+      title:'Target High-EUI Buildings First',
+      desc:`The top 15 most inefficient buildings account for a disproportionate share of energy waste. Prioritize HVAC retrofits and envelope improvements in pre-1980 Education and Office buildings for fastest ROI.`,
+      tags:['HVAC','Engineering','High Impact'],
+    },
+    {
+      priority:'high', icon:'💡',
+      title:'LED Lighting Campus-Wide Rollout',
+      desc:`Lighting accounts for ~20% of electricity usage. LED retrofits deliver 40–70% lighting energy reduction with 5–7 year paybacks. Target 24/7 buildings (labs, rec facilities) first.`,
+      tags:['LED','$1.5M','5.4yr Payback'],
+    },
+    {
+      priority:'med', icon:'☀️',
+      title:'Rooftop Solar on Large Flat-Roof Buildings',
+      desc:`15 large buildings identified with suitable rooftop area for solar PV. Estimated 2.1MW capacity generating ~3M kWh/year. Combined with demand charge reduction, payback ≈ 5.7 years.`,
+      tags:['Solar','Renewable','Engineering'],
+    },
+    {
+      priority:'med', icon:'🌡️',
+      title:'Chilled Water System Optimization',
+      desc:`Chilled water demand peaks in summer months. Installing variable speed drives and improving setpoint scheduling can reduce chilled water energy by 15–25% with minimal capital cost.`,
+      tags:['Chilled Water','Controls','Quick Win'],
+    },
+    {
+      priority:'low', icon:'📡',
+      title:'Deploy IoT Energy Monitoring Sensors',
+      desc:`Real-time sub-metering on 50 high-priority buildings enables anomaly detection, automated alerts, and data-driven operations. This dashboard is the analytics layer. Sensors enable granular control.`,
+      tags:['IoT','Software','Data'],
+    },
+    {
+      priority:'low', icon:'📋',
+      title:'Energy Performance Contracts (EPC)',
+      desc:`Use guaranteed savings from EPCs to fund capital improvements off-balance-sheet. Aligns contractor incentives with outcomes. Recommended for HVAC and lighting initiatives.`,
+      tags:['Finance','EPC','Low-Risk'],
+    },
+  ];
+  const grid = document.getElementById('recs-grid');
+  recs.forEach(r=>{
+    grid.innerHTML += `<div class="rec-card priority-${r.priority}">
+      <div class="rec-icon">${r.icon}</div>
+      <div class="rec-title">${r.title}</div>
+      <div class="rec-desc">${r.desc}</div>
+      <div class="rec-tags">${r.tags.map(t=>`<span class="rec-tag">${t}</span>`).join('')}</div>
+    </div>`;
+  });
+}
+
+// ───── Metrics Panels ─────
+function buildMetrics(){
+  if(!D) return;
+  const s = D.summary;
+  const mix = D.energy_mix;
+  const totalCost = mix.cost_usd.reduce((a,b)=>a+b,0);
+
+  const costDiv = document.getElementById('cost-metrics');
+  const pairs = mix.labels.map((l,i)=>({label:l, val:mix.cost_usd[i]}));
+  pairs.push({label:'Total Annual Cost', val:totalCost, bold:true});
+  costDiv.innerHTML = pairs.map(p=>`
+    <div class="metric-row">
+      <span class="metric-label">${p.label}</span>
+      <span class="metric-val" style="${p.bold?'color:var(--gold);font-size:.95rem':''}">${fmt.cost(p.val)}</span>
+    </div>`).join('');
+
+  document.getElementById('portfolio-metrics').innerHTML = `
+    <div class="metric-row"><span class="metric-label">Total Buildings</span><span class="metric-val">${s.total_buildings.toLocaleString()}</span></div>
+    <div class="metric-row"><span class="metric-label">Active Meters</span><span class="metric-val">${s.buildings_with_meters.toLocaleString()}</span></div>
+    <div class="metric-row"><span class="metric-label">Campus Zones</span><span class="metric-val">${s.total_sites}</span></div>
+    <div class="metric-row"><span class="metric-label">Data Period</span><span class="metric-val">2016 Full Year</span></div>
+    <div class="metric-row"><span class="metric-label">Meter Types</span><span class="metric-val">4 (Elec/CHW/Steam/HW)</span></div>
+  `;
+
+  document.getElementById('benchmark-metrics').innerHTML = `
+    <div class="metric-row"><span class="metric-label">Median Campus EUI</span><span class="metric-val" style="color:var(--orange)">${s.median_eui} kBtu/sqft</span></div>
+    <div class="metric-row"><span class="metric-label">Target EUI (Education)</span><span class="metric-val" style="color:var(--green)">150 kBtu/sqft</span></div>
+    <div class="metric-row"><span class="metric-label">Potential Savings</span><span class="metric-val" style="color:var(--green)">${s.potential_savings_pct}%</span></div>
+    <div class="metric-row"><span class="metric-label">Budget Available</span><span class="metric-val" style="color:var(--gold)">$12.0M</span></div>
+    <div class="metric-row"><span class="metric-label">Est. Payback</span><span class="metric-val">${s.payback_years} years</span></div>
+  `;
+}
+</script>
+</body>
+</html>

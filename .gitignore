@@ -1,0 +1,7 @@
+.venv/
+ashrae-energy-prediction/
+ashrae-energy-prediction.zip
+dashboard/data.js
+.DS_Store
+__pycache__/
+*.pyc
